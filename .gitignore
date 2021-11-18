@@ -50,3 +50,6 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# BSEC Library Files - Must Be Obtained Through BOSCH
+BSEC_2.0.6.1_Generic_Release_04302021/
