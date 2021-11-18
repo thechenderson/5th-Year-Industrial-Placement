@@ -1,3 +1,0 @@
-[submodule "BME68x-Sensor-API"]
-	path = BME68x-Sensor-API
-	url = git@github.com:BoschSensortec/BME68x-Sensor-API.git
