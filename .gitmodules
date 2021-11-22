@@ -1,0 +1,9 @@
+[submodule "bme68x-python-library"]
+	path = bme68x-python-library
+	url = git@github.com:thechenderson/bme68x-python-library.git
+[submodule "raspberry-pi-i2c-scd4x"]
+	path = raspberry-pi-i2c-scd4x
+	url = git@github.com:thechenderson/raspberry-pi-i2c-scd4x.git
+[submodule "embedded-uart-sps"]
+	path = embedded-uart-sps
+	url = git@github.com:thechenderson/embedded-uart-sps.git
