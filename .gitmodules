@@ -1,3 +1,12 @@
 [submodule "BME68x-Sensor-API"]
 	path = BME68x-Sensor-API
 	url = git@github.com:BoschSensortec/BME68x-Sensor-API.git
+[submodule "raspberry-pi-i2c-scd4x"]
+	path = raspberry-pi-i2c-scd4x
+	url = git@github.com:Sensirion/raspberry-pi-i2c-scd4x.git
+[submodule "bme68x-python-library"]
+	path = bme68x-python-library
+	url = git@github.com:pi3g/bme68x-python-library.git
+[submodule "embedded-uart-sps"]
+	path = embedded-uart-sps
+	url = git@github.com:Sensirion/embedded-uart-sps.git
