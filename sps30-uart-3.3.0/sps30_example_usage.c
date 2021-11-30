@@ -89,15 +89,8 @@ int main(void) {
     FILE *fs;
     fs = fopen("PMoutput.csv", "a");
     fprintf(fs,"Timestamp, PM1.0, PM2.5, PM4.0, PM10.0, nc0.5, nc1.0, nc2.5, nc4.5, nc10.0, Typical Particle Size\n");
-    fclose(fs);
-
-
-    //Find the current time to allow for timestamping measurements
-    time_t currentTime;
-    currentTime = time(NULL); 
-    char *measurementTime = ctime(&currentTime);
-    //Remove the line ending \n from cdate output to allow for use in CSV
-    measurementTime[strlen(measurementTime)-1] = '\0';
+    fclose(fs); 
+    
 
     while (1) {
         ret = sps30_start_measurement();
@@ -108,6 +101,13 @@ int main(void) {
         printf("measurements started\n");
 
         for (int i = 0; i < 60; ++i) {
+            
+            //Used to store the time for each measurement
+            time_t currentTime;
+            currentTime = time(NULL);
+            char *measurementTime = ctime(&currentTime);
+            //Remove the line ending \n from cdate output to allow for use in CSV
+            measurementTime[strlen(measurementTime)-1] = '\0';
 
             ret = sps30_read_measurement(&m);
             if (ret < 0) {
@@ -118,7 +118,7 @@ int main(void) {
                         "Chip state: %u - measurements may not be accurate\n",
                         SPS30_GET_ERR_STATE(ret));
                 }
-
+                printf("Measurement Time: %s\n", measurementTime);
                 printf("measured values:\n"
                        "\t%0.2f pm1.0\n"
                        "\t%0.2f pm2.5\n"
@@ -133,6 +133,7 @@ int main(void) {
                        m.mc_1p0, m.mc_2p5, m.mc_4p0, m.mc_10p0, m.nc_0p5,
                        m.nc_1p0, m.nc_2p5, m.nc_4p0, m.nc_10p0,
                        m.typical_particle_size);
+
 
                 fs = fopen("PMoutput.csv", "a");
                 fprintf(fs,"%s, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f \n", measurementTime, m.mc_1p0, m.mc_2p5, m.mc_4p0, m.mc_10p0, m.nc_0p5, m.nc_1p0, m.nc_2p5, m.nc_4p0, m.nc_10p0, m.typical_particle_size);
