@@ -87,7 +87,7 @@ int main(void) {
 
     //Add headers to CSV file. (Make sure a CSV file is not already present as the header will be added to the exisitg CSV otherwise)
     FILE *fs;
-    fs = fopen("PMoutput.csv", "a");
+    fs = fopen("../Outputs/PMoutput.csv", "a");
     fprintf(fs,"Timestamp, PM1.0, PM2.5, PM4.0, PM10.0, nc0.5, nc1.0, nc2.5, nc4.5, nc10.0, Typical Particle Size\n");
     fclose(fs); 
     
@@ -135,7 +135,7 @@ int main(void) {
                        m.typical_particle_size);
 
 
-                fs = fopen("PMoutput.csv", "a");
+                fs = fopen("../Outputs/PMoutput.csv", "a");
                 fprintf(fs,"%s, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f \n", measurementTime, m.mc_1p0, m.mc_2p5, m.mc_4p0, m.mc_10p0, m.nc_0p5, m.nc_1p0, m.nc_2p5, m.nc_4p0, m.nc_10p0, m.typical_particle_size);
                 fclose(fs);
 
