@@ -35,12 +35,9 @@
 
 #include "sensirion_uart.h"
 #include "sps30.h"
-
-/**
- * TO USE CONSOLE OUTPUT (PRINTF) AND WAIT (SLEEP) PLEASE ADAPT THEM TO YOUR
- * PLATFORM
- */
-//#define printf(...)
+#include "scd4x_i2c.h"
+#include "sensirion_common.h"
+#include "sensirion_i2c_hal.h"
 
 int main(void) {
     struct sps30_measurement m;
@@ -85,21 +82,58 @@ int main(void) {
     if (ret)
         printf("error %d setting the auto-clean interval\n", ret);
 
-    //Add headers to CSV file. (Make sure a CSV file is not already present as the header will be added to the exisitg CSV otherwise)
-    FILE *fs;
-    fs = fopen("../Outputs/PMoutput.csv", "a");
-    fprintf(fs,"Timestamp, PM1.0, PM2.5, PM4.0, PM10.0, nc0.5, nc1.0, nc2.5, nc4.5, nc10.0, Typical Particle Size\n");
-    fclose(fs); 
+
+
+    //BEGIN SCD40 SETUP ----------------------------------------------
+    int16_t error = 0;
+
+    sensirion_i2c_hal_init();
+
+    // Clean up potential SCD40 states
+    scd4x_wake_up();
+    scd4x_stop_periodic_measurement();
+    scd4x_reinit();
+
+    uint16_t serial_0;
+    uint16_t serial_1;
+    uint16_t serial_2;
+    error = scd4x_get_serial_number(&serial_0, &serial_1, &serial_2);
+    if (error) {
+        printf("Error executing scd4x_get_serial_number(): %i\n", error);
+    } else {
+        printf("serial: 0x%04x%04x%04x\n", serial_0, serial_1, serial_2);
+    }
+
+    // Start Measurement
+
+    error = scd4x_start_periodic_measurement();
+    if (error) {
+        printf("Error executing scd4x_start_periodic_measurement(): %i\n",
+               error);
+    }
+
+
+    //Add headers to SPS30 CSV file. (Make sure a CSV file is not already present as the header will be added to the exisitg CSV otherwise)
+    FILE *SPS30csv;
+    SPS30csv = fopen("../Outputs/PMoutput.csv", "a");
+    fprintf(SPS30csv,"Timestamp, PM1.0, PM2.5, PM4.0, PM10.0, nc0.5, nc1.0, nc2.5, nc4.5, nc10.0, Typical Particle Size\n");
+    fclose(SPS30csv); 
     
+    //Add headers to SCD40 CSV file. (Make sure a CSV file is not already present as the header will be added to the exisitg CSV otherwise)
+    FILE *SCD40csv;
+    SCD40csv = fopen("../Outputs/CO2output.csv", "a");
+    fprintf(SCD40csv,"Timestamp, CO2, Temperature, Humidity\n");
+    fclose(SCD40csv);
 
     while (1) {
+
+        //Start SPS30 Measurements
         ret = sps30_start_measurement();
         if (ret < 0) {
             printf("error starting measurement\n");
         }
 
-        printf("measurements started\n");
-
+        //SPS30 measurements begin -------------------------------
         for (int i = 0; i < 60; ++i) {
             
             //Used to store the time for each measurement
@@ -121,24 +155,50 @@ int main(void) {
                 printf("SPS30 MEASUREMENT TAKEN - %s\n", measurementTime);
                 printf("********************************\n");
 
-
-
-                fs = fopen("../Outputs/PMoutput.csv", "a");
-                fprintf(fs,"%s, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f \n", measurementTime, m.mc_1p0, m.mc_2p5, m.mc_4p0, m.mc_10p0, m.nc_0p5, m.nc_1p0, m.nc_2p5, m.nc_4p0, m.nc_10p0, m.typical_particle_size);
-                fclose(fs);
+                SPS30csv = fopen("../Outputs/PMoutput.csv", "a");
+                fprintf(SPS30csv,"%s, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f \n", measurementTime, m.mc_1p0, m.mc_2p5, m.mc_4p0, m.mc_10p0, m.nc_0p5, m.nc_1p0, m.nc_2p5, m.nc_4p0, m.nc_10p0, m.typical_particle_size);
+                fclose(SPS30csv);
 
             }
             sensirion_sleep_usec(1000000); /* sleep for 1s */
+            
+            sensirion_i2c_hal_sleep_usec(5000000);
+
+            uint16_t co2;
+            float temperature;
+            float humidity;
+            error = scd4x_read_measurement(&co2, &temperature, &humidity);
+            if (error) {
+                printf("Error executing scd4x_read_measurement(): %i\n", error);
+            } else if (co2 == 0) {
+                printf("Invalid sample detected, skipping.\n");
+            } else {
+                printf("SCD40 MEASUREMENT TAKEN - %s\n", measurementTime);
+                printf("********************************\n");
+                SCD40csv = fopen("../Outputs/CO2output.csv", "a");
+                fprintf(SCD40csv,"%s, %u, %0.2f, %0.2f\n", measurementTime, co2, temperature, humidity);
+                fclose(SCD40csv);
+            }
+
+            //Wake up SPS30
+            if (version_information.firmware_major >= 2) {
+                ret = sps30_wake_up();
+                if (ret) {
+                    printf("Error %i waking up sensor\n", ret);
+                }
+            }
         }
 
         /* Stop measurement for 1min to preserve power. Also enter sleep mode
-         * if the firmware version is >=2.0.
-         */
-        ret = sps30_stop_measurement();
-        if (ret) {
-            printf("Stopping measurement failed\n");
-        }
+             * if the firmware version is >=2.0.
+             */
+            ret = sps30_stop_measurement();
+            if (ret) {
+                printf("Stopping measurement failed\n");
+            }
 
+        
+        //Sleep SPS30
         if (version_information.firmware_major >= 2) {
             ret = sps30_sleep();
             if (ret) {
@@ -146,9 +206,10 @@ int main(void) {
             }
         }
 
-        printf("No measurements for 1 minute\n");
+        //No measurements for 1 minute
         sensirion_sleep_usec(1000000 * 60);
 
+        //Wake up SPS30 after minute
         if (version_information.firmware_major >= 2) {
             ret = sps30_wake_up();
             if (ret) {
